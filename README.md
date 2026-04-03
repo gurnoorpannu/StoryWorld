@@ -26,17 +26,17 @@ Frame your shot → Capture → (Optional: cinematic stylization) → AI video g
 
 ## Tech Stack
 
-| Layer | Technology | Cost |
+| Layer | Technology |
 |---|---|---|
-| Speech-to-Text + Prompt Enhancement | Gemini 2.5 Flash (Google AI Studio) | Free tier |
-| Offline Speech Fallback | Apple SFSpeechRecognizer | Free (on-device) |
-| Text-to-3D | Hyper3D Rodin via fal.ai | Free signup credits |
-| GLB-to-USDZ Conversion | Apple ModelIO | Free (on-device) |
-| AR Rendering | ARKit + RealityKit | Free (iOS frameworks) |
-| Image Stylization (optional) | Flux 2.0 Pro via fal.ai | Free signup credits |
-| Image-to-Video | Seedance 1.0 Pro via fal.ai | Free signup credits |
-| Audio Recording | AVFoundation | Free (on-device) |
-| Video Playback & Save | AVKit + Photos | Free (on-device) |
+| Speech-to-Text + Prompt Enhancement | Gemini 2.5 Flash (Google AI Studio) | 
+| Offline Speech Fallback | Apple SFSpeechRecognizer | 
+| Text-to-3D | Hyper3D Rodin via fal.ai | 
+| GLB-to-USDZ Conversion | Apple ModelIO |
+| AR Rendering | ARKit + RealityKit | 
+| Image Stylization (optional) | Flux 2.0 Pro via fal.ai | 
+| Image-to-Video | Seedance 1.0 Pro via fal.ai |
+| Audio Recording | AVFoundation | 
+| Video Playback & Save | AVKit + Photos | 
 
 **Zero external dependencies.** No CocoaPods, no SPM packages. Everything uses URLSession and built-in Apple frameworks.
 
@@ -100,69 +100,6 @@ StoryWorld/
 │
 └── Assets.xcassets/
 ```
-
----
-
-## Setup & Installation
-
-### Prerequisites
-
-- Mac with Xcode installed
-- iPhone with ARKit support (iPhone SE 2nd gen or newer)
-- USB cable to connect iPhone to Mac
-- Free API keys (instructions below)
-
-### 1. Clone the repository
-
-```bash
-git clone <repo-url>
-cd StoryWorld
-```
-
-### 2. Get API keys
-
-**Gemini API Key (free):**
-1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
-2. Sign in with Google
-3. Click "Create API Key"
-4. Copy the key
-
-**fal.ai API Key (free signup credits):**
-1. Go to [fal.ai](https://fal.ai)
-2. Create an account
-3. Go to dashboard -> API Keys
-4. Copy the key
-
-### 3. Configure secrets
-
-Create or edit `StoryWorld/Secrets.swift`:
-
-```swift
-enum Secrets {
-    static let geminiKey = "YOUR_GEMINI_API_KEY"
-    static let falKey = "YOUR_FAL_AI_KEY"
-}
-```
-
-### 4. Open in Xcode
-
-```bash
-open StoryWorld.xcodeproj
-```
-
-### 5. Configure signing
-
-1. Select the **StoryWorld** target
-2. Go to **Signing & Capabilities**
-3. Set **Team** to your personal Apple ID
-4. Xcode will auto-manage provisioning
-
-### 6. Build & run
-
-1. Connect your iPhone via USB
-2. Select your iPhone as the run destination
-3. Press **Cmd+R** to build and run
-4. **Allow camera and microphone access** when prompted
 
 ---
 
