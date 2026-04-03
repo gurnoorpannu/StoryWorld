@@ -2,8 +2,6 @@
 
 **An AR filmmaking tool powered by AI.** Speak to create 3D characters, place them in augmented reality, frame your shot by physically moving your phone, and let AI generate cinematic video clips from your scene.
 
-Built for hackathon/demo purposes. Runs on-device via Xcode USB — no App Store publishing required.
-
 ---
 
 ## Demo Pipeline
