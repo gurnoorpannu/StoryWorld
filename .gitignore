@@ -1,0 +1,12 @@
+# API Keys
+Secrets.swift
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad
+xcuserdata/
+
+# macOS
+.DS_Store
