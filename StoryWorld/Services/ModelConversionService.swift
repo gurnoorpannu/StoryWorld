@@ -1,20 +1,28 @@
 import Foundation
 import ModelIO
+import SceneKit
+import SceneKit.ModelIO
 
 class ModelConversionService {
 
-    /// Convert a local GLB file to USDZ using ModelIO
+    /// Convert a local GLB file to USDZ using SceneKit + ModelIO
     func convertGLBtoUSDZ(glbLocalURL: URL) throws -> URL {
-        let asset = MDLAsset(url: glbLocalURL)
-
         let usdzURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("model_\(UUID().uuidString).usdz")
 
         // Remove existing file at destination if any
         try? FileManager.default.removeItem(at: usdzURL)
 
-        guard asset.export(to: usdzURL) else {
-            print("ModelConversionService: export(to:) returned false")
+        // Load GLB via MDLAsset, create SCNScene, then write as USDZ
+        let mdlAsset = MDLAsset(url: glbLocalURL)
+        mdlAsset.loadTextures()
+
+        let scene = SCNScene(mdlAsset: mdlAsset)
+
+        let success = scene.write(to: usdzURL, delegate: nil)
+
+        guard success else {
+            print("ModelConversionService: scene.write(to:) returned false")
             throw AppError.conversionFailed
         }
 

@@ -13,6 +13,11 @@ struct MainARView: View {
     @State private var showOnboarding = true
     @State private var cinematicStyleEnabled = false
 
+    // New feature state
+    @State private var showModelPicker = false
+    @State private var showGallery = false
+    @State private var capturedFrames: [CapturedFrame] = []
+
     // Services
     private let gemini = GeminiVoiceService(apiKey: Secrets.geminiKey)
     private let appleSpeech = AppleSpeechService()
@@ -30,7 +35,48 @@ struct MainARView: View {
 
             // Overlay controls
             VStack {
-                // Top: status + tracking
+                // Top bar: gallery + status + models
+                HStack {
+                    // Gallery button (top left)
+                    Button {
+                        showGallery = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "photo.on.rectangle")
+                                .font(.system(size: 14))
+                            if !capturedFrames.isEmpty {
+                                Text("\(capturedFrames.count)")
+                                    .font(.caption2.bold())
+                            }
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: Capsule())
+                    }
+
+                    Spacer()
+
+                    // Models button (top right)
+                    Button {
+                        showModelPicker = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "cube.fill")
+                                .font(.system(size: 14))
+                            Text("Models")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: Capsule())
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 60)
+
+                // Status messages
                 VStack(spacing: 4) {
                     if !arVM.trackingStatus.isEmpty {
                         statusPill(text: arVM.trackingStatus)
@@ -39,7 +85,7 @@ struct MainARView: View {
                         statusPill(text: statusMessage)
                     }
                 }
-                .padding(.top, 60)
+                .padding(.top, 8)
 
                 Spacer()
 
@@ -49,7 +95,7 @@ struct MainARView: View {
                         Text("Welcome to StoryWorld")
                             .font(.headline)
                             .foregroundStyle(.white)
-                        Text("Tap the mic and describe a character.\nOr tap a surface to place a starter model.")
+                        Text("Tap the mic and describe a character,\nor tap Models to browse starter 3D models.\nThen tap a surface to place it in AR.")
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.8))
                             .multilineTextAlignment(.center)
@@ -77,7 +123,7 @@ struct MainARView: View {
                     cinematicStyleEnabled.toggle()
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: cinematicStyleEnabled ? "sparkles" : "sparkles")
+                        Image(systemName: "sparkles")
                             .font(.caption2)
                         Text(cinematicStyleEnabled ? "Cinematic Style ON" : "Cinematic Style OFF")
                             .font(.caption2)
@@ -103,14 +149,14 @@ struct MainARView: View {
                     }
                     .disabled(isProcessing)
 
-                    // Camera button
+                    // Camera button — captures to gallery
                     controlButton(
                         icon: "camera.fill",
                         size: 72,
                         color: .white,
                         foreground: .black
                     ) {
-                        captureAndGenerateVideo()
+                        captureToGallery()
                     }
                     .disabled(isProcessing || arVM.placedCharacters.isEmpty)
                     .opacity(isProcessing || arVM.placedCharacters.isEmpty ? 0.5 : 1.0)
@@ -147,6 +193,22 @@ struct MainARView: View {
                 }
             }
         }
+        .sheet(isPresented: $showModelPicker) {
+            ModelPickerSheet { selectedURL in
+                arVM.pendingModelURL = selectedURL
+                statusMessage = "Tap a surface to place the model!"
+                showOnboarding = false
+            }
+        }
+        .sheet(isPresented: $showGallery) {
+            GalleryView(
+                capturedFrames: $capturedFrames,
+                imageUploader: imageUploader,
+                imageEditService: imageEditService,
+                videoService: videoService,
+                cinematicStyleEnabled: cinematicStyleEnabled
+            )
+        }
         .sheet(isPresented: $showingVideoResult) {
             if let url = resultVideoURL {
                 VideoResultSheet(videoURL: url)
@@ -173,6 +235,30 @@ struct MainARView: View {
         }
     }
 
+    // MARK: - Capture to Gallery
+
+    private func captureToGallery() {
+        statusMessage = "Capturing..."
+
+        Task { @MainActor in
+            guard let image = await arVM.captureFrame() else {
+                statusMessage = "Capture failed — try again"
+                return
+            }
+
+            let frame = CapturedFrame(image: image)
+            capturedFrames.append(frame)
+            statusMessage = "Captured! Open Gallery to animate."
+
+            // Flash effect
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                if statusMessage == "Captured! Open Gallery to animate." {
+                    statusMessage = ""
+                }
+            }
+        }
+    }
+
     // MARK: - Voice → 3D → AR Pipeline
 
     private func processAudio(_ audioData: Data) {
@@ -181,12 +267,10 @@ struct MainARView: View {
 
         Task { @MainActor in
             do {
-                // Step 1: Gemini transcription + prompt enhancement
                 let prompt: CharacterPrompt
                 do {
                     prompt = try await gemini.extractCharacterPrompt(audioData: audioData)
                 } catch {
-                    // Fallback: use Apple Speech for transcription
                     print("MainARView: Gemini failed (\(error)), trying Apple Speech fallback")
                     statusMessage = "Gemini unavailable, using on-device speech..."
                     if let transcript = await appleSpeech.transcribeFromAudio(audioData),
@@ -207,13 +291,11 @@ struct MainARView: View {
                 print("  optimized_3d_prompt: \(prompt.optimized_3d_prompt)")
                 print("  motion_prompt: \(prompt.motion_prompt)")
 
-                // Step 2: Generate 3D model via Rodin
                 statusMessage = "Generating 3D: \"\(prompt.raw_transcript)\"..."
                 let remoteGLBURL: URL
                 do {
                     remoteGLBURL = try await modelService.generateModel(prompt: prompt.optimized_3d_prompt)
                 } catch {
-                    // If 3D generation fails (no fal key, no credits), use starter model
                     print("MainARView: 3D generation failed: \(error)")
                     if let fallback = starterModelURL() {
                         arVM.pendingModelURL = fallback
@@ -224,11 +306,9 @@ struct MainARView: View {
                     throw error
                 }
 
-                // Step 3: Download GLB
                 statusMessage = "Downloading 3D model..."
                 let localGLB = try await modelService.downloadModel(from: remoteGLBURL)
 
-                // Step 4: Convert GLB → USDZ
                 statusMessage = "Preparing for AR..."
                 let usdzURL: URL
                 do {
@@ -236,16 +316,14 @@ struct MainARView: View {
                 } catch {
                     print("MainARView: GLB→USDZ conversion failed, using starter model: \(error)")
                     if let fallback = starterModelURL() {
-                        usdzURL = fallback
+                        arVM.pendingModelURL = fallback
                         statusMessage = "Using starter model — AI model had complex geometry. Tap to place!"
-                        arVM.pendingModelURL = usdzURL
                         isProcessing = false
                         return
                     }
                     throw AppError.conversionFailed
                 }
 
-                // Step 5: Ready to place
                 arVM.pendingModelURL = usdzURL
                 statusMessage = "Tap a surface to place your character!"
                 isProcessing = false
@@ -254,65 +332,6 @@ struct MainARView: View {
                 statusMessage = friendlyError(error)
                 isProcessing = false
                 print("MainARView: Pipeline error: \(error)")
-            }
-        }
-    }
-
-    // MARK: - Capture + Video Pipeline
-
-    private func captureAndGenerateVideo() {
-        isProcessing = true
-        statusMessage = "Capturing your scene..."
-
-        Task { @MainActor in
-            do {
-                // Step 1: Capture AR frame
-                guard let image = await arVM.captureFrame() else {
-                    throw AppError.captureFailed
-                }
-                print("MainARView: Captured frame \(Int(image.size.width))x\(Int(image.size.height))")
-
-                // Step 2: Upload to fal.ai storage
-                statusMessage = "Uploading frame..."
-                var imageURL = try await imageUploader.upload(image, falKey: Secrets.falKey)
-
-                // Step 3 (optional): Cinematic stylization via Flux 2.0 Pro
-                if cinematicStyleEnabled {
-                    statusMessage = "Applying cinematic style..."
-                    do {
-                        let styledURL = try await imageEditService.stylizeFrame(imageURL: imageURL)
-                        imageURL = styledURL
-                        print("MainARView: Stylized image at \(styledURL)")
-                    } catch {
-                        // Non-fatal: continue with unstylized image
-                        print("MainARView: Stylization failed, continuing with original: \(error)")
-                        statusMessage = "Style failed — using original frame..."
-                    }
-                }
-
-                // Step 4: Generate video via Seedance
-                let motionPrompt = lastPrompt?.motion_prompt
-                    ?? "Gentle camera movement, character subtly animates, cinematic atmosphere"
-
-                let videoURL = try await videoService.generateVideo(
-                    fromImageURL: imageURL,
-                    motionPrompt: motionPrompt
-                ) { progress in
-                    Task { @MainActor in
-                        statusMessage = progress
-                    }
-                }
-
-                // Step 4: Show result
-                resultVideoURL = videoURL
-                showingVideoResult = true
-                isProcessing = false
-                statusMessage = ""
-
-            } catch {
-                statusMessage = friendlyError(error)
-                isProcessing = false
-                print("MainARView: Video pipeline error: \(error)")
             }
         }
     }

@@ -30,7 +30,7 @@ class ARSceneViewModel: ObservableObject {
 
     func placeModel(from usdzURL: URL, at transform: simd_float4x4, in arView: ARView) async {
         do {
-            let entity = try await Entity(contentsOf: usdzURL)
+            let entity = try Entity.loadModel(contentsOf: usdzURL)
             entity.scale = SIMD3<Float>(repeating: 0.3)
             entity.generateCollisionShapes(recursive: true)
 
