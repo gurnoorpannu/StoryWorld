@@ -62,11 +62,11 @@ class VideoGenerationService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
-            "model": "MiniMax-Hailuo-2.3",
+            "model": "MiniMax-Hailuo-2.3-Fast",
             "prompt": motionPrompt,
             "first_frame_image": imageString,
             "duration": 6,
-            "resolution": "1080P"
+            "resolution": "768P"
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
