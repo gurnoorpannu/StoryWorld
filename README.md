@@ -18,7 +18,7 @@ Frame your shot → Capture → (Optional: cinematic stylization) → AI video g
 - **Voice-to-3D**: Describe a character or object in natural language. Gemini 2.5 Flash transcribes your speech and enhances it into an optimized 3D generation prompt.
 - **AI 3D Generation**: Hyper3D Rodin generates a textured 3D model (.glb) from your prompt, automatically converted to Apple's USDZ format for AR.
 - **AR Placement**: Tap any real-world surface to place your character. Drag, pinch-to-scale, and two-finger-rotate to adjust.
-- **Cinematic Video**: Capture your AR scene, optionally apply Flux 2.0 Pro cinematic styling, then Seedance 1.0 Pro generates a short cinematic video clip.
+- **Cinematic Video**: Capture your AR scene, optionally apply Flux 2.0 Pro cinematic styling, then MiniMax Hailuo 2.3 generates a short cinematic video clip.
 - **Offline Fallback**: If Gemini is unavailable, Apple's on-device SFSpeechRecognizer handles transcription. If 3D generation fails, bundled starter models keep the demo running.
 - **Save & Share**: Generated videos can be saved directly to your camera roll.
 
@@ -34,7 +34,7 @@ Frame your shot → Capture → (Optional: cinematic stylization) → AI video g
 | GLB-to-USDZ Conversion | Apple ModelIO |
 | AR Rendering | ARKit + RealityKit | 
 | Image Stylization (optional) | Flux 2.0 Pro via fal.ai | 
-| Image-to-Video | Seedance 1.0 Pro via fal.ai |
+| Image-to-Video | MiniMax Hailuo 2.3 |
 | Audio Recording | AVFoundation | 
 | Video Playback & Save | AVKit + Photos | 
 
@@ -49,10 +49,11 @@ Frame your shot → Capture → (Optional: cinematic stylization) → AI video g
 | Gemini 2.5 Flash | `generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent` | API key as URL param |
 | Rodin 3D Generation | `queue.fal.run/fal-ai/hyper3d/rodin` | `Authorization: Key` header |
 | Flux 2.0 Pro Stylization | `queue.fal.run/fal-ai/flux-2-pro/edit` | `Authorization: Key` header |
-| Seedance 1.0 Pro Video | `queue.fal.run/fal-ai/bytedance/seedance/v1/pro/image-to-video` | `Authorization: Key` header |
+| MiniMax Hailuo 2.3 Video | `api.minimax.io/v1/video_generation` | `Authorization: Bearer` header |
 | fal.ai Image Upload | `fal.ai/api/upload` | `Authorization: Key` header |
 
-All fal.ai services use a queue-based pattern: **submit** (POST) -> **poll status** (GET) -> **fetch result** (GET).
+Fal.ai services use a queue-based pattern: **submit** (POST) -> **poll status** (GET) -> **fetch result** (GET).
+MiniMax uses a similar pattern: **submit** (POST `/v1/video_generation`) -> **poll** (GET `/v1/query/video_generation`) -> **retrieve file** (GET `/v1/files/retrieve`).
 
 ---
 
@@ -91,7 +92,7 @@ StoryWorld/
 │   ├── ModelConversionService.swift # GLB -> USDZ via ModelIO
 │   ├── ImageUploadService.swift     # Upload UIImage to fal.ai storage
 │   ├── ImageEditService.swift       # Flux 2.0 Pro image stylization
-│   └── VideoGenerationService.swift # Seedance 1.0 Pro image-to-video
+│   └── VideoGenerationService.swift # MiniMax Hailuo 2.3 image-to-video
 │
 ├── Resources/
 │   └── starter_models/
@@ -200,7 +201,7 @@ Tap the **trash button** (bottom right) to remove all placed characters.
               └────────────┬────────────┘
                            │ styled image URL
               ┌────────────▼────────────┐
-              │ VideoGenerationService  │  Seedance 1.0 Pro
+              │ VideoGenerationService  │  MiniMax Hailuo 2.3
               │   generateVideo()       │  (1-3 min)
               └────────────┬────────────┘
                            │ video URL
@@ -278,7 +279,7 @@ The app is designed to never crash and always remain functional, even when APIs 
 | GLB-to-USDZ conversion | < 1 second |
 | Image upload | 1-2 seconds |
 | Image stylization (Flux) | 10-30 seconds |
-| Video generation (Seedance) | 1-3 minutes |
+| Video generation (MiniMax Hailuo) | 1-3 minutes |
 
 ---
 
@@ -290,7 +291,7 @@ The app is designed to never crash and always remain functional, even when APIs 
 | "Gemini API error (400)" | Check your API key in Secrets.swift |
 | "fal.ai submit failed" | Check your fal.ai key and remaining credits |
 | 3D model looks wrong in AR | GLB-to-USDZ conversion is imperfect. Try a different prompt. |
-| Video generation seems stuck | Seedance takes 1-3 min. Watch the elapsed time counter. |
+| Video generation seems stuck | MiniMax Hailuo takes 1-3 min. Watch the elapsed time counter. |
 | App crashes on simulator | AR only works on physical devices. Use a real iPhone. |
 | Model won't place | Wait for AR to detect a plane (status shows "Scanning...") |
 | No sound when recording | Allow microphone permission in Settings > StoryWorld |
@@ -302,7 +303,8 @@ The app is designed to never crash and always remain functional, even when APIs 
 | Service | Free Tier |
 |---|---|
 | Gemini 2.5 Flash | Generous free tier via Google AI Studio |
-| fal.ai (Rodin, Flux, Seedance) | Free signup credits (~$10 worth) |
+| fal.ai (Rodin, Flux) | Free signup credits (~$10 worth) |
+| MiniMax Hailuo 2.3 | Free tier available |
 | Apple frameworks | Free |
 | **Total** | **$0** |
 

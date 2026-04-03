@@ -36,3 +36,32 @@ struct SeedanceVideo: Codable {
 struct UploadResult: Codable {
     let url: String
 }
+
+// MARK: - MiniMax Models
+
+struct MiniMaxTaskResponse: Codable {
+    let task_id: String?
+
+    // MiniMax may include base_resp with error info
+    let base_resp: MiniMaxBaseResp?
+}
+
+struct MiniMaxBaseResp: Codable {
+    let status_code: Int?
+    let status_msg: String?
+}
+
+struct MiniMaxQueryResponse: Codable {
+    let status: String
+    let file_id: String?
+    let error_message: String?
+    let base_resp: MiniMaxBaseResp?
+}
+
+struct MiniMaxFileResponse: Codable {
+    let file: MiniMaxFile
+}
+
+struct MiniMaxFile: Codable {
+    let download_url: String
+}

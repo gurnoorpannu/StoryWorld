@@ -2,14 +2,10 @@ import SwiftUI
 
 struct GalleryView: View {
     @Binding var capturedFrames: [CapturedFrame]
-    let imageUploader: ImageUploadService
-    let imageEditService: ImageEditService
     let videoService: VideoGenerationService
-    let cinematicStyleEnabled: Bool
 
     @Environment(\.dismiss) private var dismiss
     @State private var selectedFrame: CapturedFrame?
-    @State private var showAnimateSheet = false
 
     var body: some View {
         NavigationStack {
@@ -33,7 +29,6 @@ struct GalleryView: View {
                             ForEach(capturedFrames.reversed()) { frame in
                                 GalleryThumbnail(frame: frame) {
                                     selectedFrame = frame
-                                    showAnimateSheet = true
                                 }
                             }
                         }
@@ -48,16 +43,11 @@ struct GalleryView: View {
                     Button("Close") { dismiss() }
                 }
             }
-            .sheet(isPresented: $showAnimateSheet) {
-                if let frame = selectedFrame {
-                    AnimateSheet(
-                        frame: frame,
-                        imageUploader: imageUploader,
-                        imageEditService: imageEditService,
-                        videoService: videoService,
-                        cinematicStyleEnabled: cinematicStyleEnabled
-                    )
-                }
+            .sheet(item: $selectedFrame) { frame in
+                AnimateSheet(
+                    frame: frame,
+                    videoService: videoService
+                )
             }
         }
     }

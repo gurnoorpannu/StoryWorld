@@ -11,21 +11,21 @@ struct MainARView: View {
     @State private var lastAudioData: Data?
     @State private var lastPrompt: CharacterPrompt?
     @State private var showOnboarding = true
-    @State private var cinematicStyleEnabled = false
 
     // New feature state
     @State private var showModelPicker = false
     @State private var showGallery = false
     @State private var capturedFrames: [CapturedFrame] = []
+    @State private var selectedBackground: BackgroundTheme = .realWorld
+    @State private var showBackgroundPicker = false
 
     // Services
     private let gemini = GeminiVoiceService(apiKey: Secrets.geminiKey)
     private let appleSpeech = AppleSpeechService()
-    private let modelService = FalModelService(falKey: Secrets.falKey)
+    private let modelService = TripoModelService(apiKey: Secrets.tripoKey)
     private let conversion = ModelConversionService()
-    private let imageUploader = ImageUploadService()
-    private let imageEditService = ImageEditService(falKey: Secrets.falKey)
-    private let videoService = VideoGenerationService(falKey: Secrets.falKey)
+    private let videoService = VideoGenerationService(apiKey: Secrets.minimaxKey)
+    private let bgRemoval = BackgroundRemovalService()
 
     var body: some View {
         ZStack {
@@ -118,23 +118,73 @@ struct MainARView: View {
                         .padding(.bottom, 8)
                 }
 
-                // Cinematic style toggle
-                Button {
-                    cinematicStyleEnabled.toggle()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "sparkles")
-                            .font(.caption2)
-                        Text(cinematicStyleEnabled ? "Cinematic Style ON" : "Cinematic Style OFF")
-                            .font(.caption2)
+                // Background picker button (only when characters placed)
+                if !arVM.placedCharacters.isEmpty {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showBackgroundPicker.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: selectedBackground == .realWorld ? "photo.fill" : selectedBackground.icon)
+                                .font(.caption2)
+                            Text(selectedBackground == .realWorld ? "Background" : selectedBackground.rawValue)
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(selectedBackground == .realWorld ? .white.opacity(0.7) : .cyan)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial, in: Capsule())
                     }
-                    .foregroundStyle(cinematicStyleEnabled ? .yellow : .white.opacity(0.7))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    .disabled(isProcessing)
+                    .padding(.bottom, 8)
                 }
-                .disabled(isProcessing)
-                .padding(.bottom, 8)
+
+                // Background picker strip
+                if showBackgroundPicker {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(BackgroundTheme.allCases) { theme in
+                                Button {
+                                    selectedBackground = theme
+                                    showBackgroundPicker = false
+                                } label: {
+                                    VStack(spacing: 4) {
+                                        ZStack {
+                                            if theme == .realWorld {
+                                                Circle()
+                                                    .fill(.ultraThinMaterial)
+                                                    .frame(width: 44, height: 44)
+                                            } else {
+                                                Circle()
+                                                    .fill(LinearGradient(
+                                                        colors: [theme.colors.0, theme.colors.1],
+                                                        startPoint: .top, endPoint: .bottom
+                                                    ))
+                                                    .frame(width: 44, height: 44)
+                                            }
+                                            Image(systemName: theme.icon)
+                                                .font(.system(size: 16))
+                                                .foregroundStyle(.white)
+                                        }
+                                        Text(theme.rawValue)
+                                            .font(.system(size: 9))
+                                            .foregroundStyle(.white)
+                                    }
+                                    .padding(4)
+                                    .background(
+                                        selectedBackground == theme
+                                            ? RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.2))
+                                            : nil
+                                    )
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
 
                 // Bottom: control buttons
                 HStack(spacing: 32) {
@@ -203,10 +253,7 @@ struct MainARView: View {
         .sheet(isPresented: $showGallery) {
             GalleryView(
                 capturedFrames: $capturedFrames,
-                imageUploader: imageUploader,
-                imageEditService: imageEditService,
-                videoService: videoService,
-                cinematicStyleEnabled: cinematicStyleEnabled
+                videoService: videoService
             )
         }
         .sheet(isPresented: $showingVideoResult) {
@@ -241,12 +288,26 @@ struct MainARView: View {
         statusMessage = "Capturing..."
 
         Task { @MainActor in
-            guard let image = await arVM.captureFrame() else {
+            guard let rawImage = await arVM.captureFrame() else {
                 statusMessage = "Capture failed — try again"
                 return
             }
 
-            let frame = CapturedFrame(image: image)
+            let finalImage: UIImage
+            if selectedBackground != .realWorld {
+                statusMessage = "Applying \(selectedBackground.rawValue) background..."
+                if let composited = bgRemoval.applyBackground(to: rawImage, theme: selectedBackground) {
+                    finalImage = composited
+                } else {
+                    // Fallback: use raw image if background removal fails
+                    finalImage = rawImage
+                    print("MainARView: Background removal failed, using original")
+                }
+            } else {
+                finalImage = rawImage
+            }
+
+            let frame = CapturedFrame(image: finalImage)
             capturedFrames.append(frame)
             statusMessage = "Captured! Open Gallery to animate."
 

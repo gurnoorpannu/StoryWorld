@@ -23,11 +23,8 @@
 		A10014 /* TripoModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10014 /* TripoModels.swift */; };
 		A10015 /* GeminiVoiceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10015 /* GeminiVoiceService.swift */; };
 		A10016 /* AppleSpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10016 /* AppleSpeechService.swift */; };
-		A10017 /* FalModelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10017 /* FalModelService.swift */; };
 		A10018 /* TripoModelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10018 /* TripoModelService.swift */; };
 		A10019 /* ModelConversionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10019 /* ModelConversionService.swift */; };
-		A10020 /* ImageUploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10020 /* ImageUploadService.swift */; };
-		A10021 /* ImageEditService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10021 /* ImageEditService.swift */; };
 		A10022 /* VideoGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10022 /* VideoGenerationService.swift */; };
 		A10023 /* toy_biplane_realistic.usdz in Resources */ = {isa = PBXBuildFile; fileRef = B10023 /* toy_biplane_realistic.usdz */; };
 		A10024 /* toy_car.usdz in Resources */ = {isa = PBXBuildFile; fileRef = B10024 /* toy_car.usdz */; };
@@ -36,6 +33,8 @@
 		A10027 /* GalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10027 /* GalleryView.swift */; };
 		A10028 /* AnimateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10028 /* AnimateSheet.swift */; };
 		A10029 /* CapturedFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10029 /* CapturedFrame.swift */; };
+		A10030 /* BackgroundTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10030 /* BackgroundTheme.swift */; };
+		A10031 /* BackgroundRemovalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10031 /* BackgroundRemovalService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,11 +55,8 @@
 		B10014 /* TripoModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripoModels.swift; sourceTree = "<group>"; };
 		B10015 /* GeminiVoiceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiVoiceService.swift; sourceTree = "<group>"; };
 		B10016 /* AppleSpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechService.swift; sourceTree = "<group>"; };
-		B10017 /* FalModelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FalModelService.swift; sourceTree = "<group>"; };
 		B10018 /* TripoModelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripoModelService.swift; sourceTree = "<group>"; };
 		B10019 /* ModelConversionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelConversionService.swift; sourceTree = "<group>"; };
-		B10020 /* ImageUploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageUploadService.swift; sourceTree = "<group>"; };
-		B10021 /* ImageEditService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageEditService.swift; sourceTree = "<group>"; };
 		B10022 /* VideoGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoGenerationService.swift; sourceTree = "<group>"; };
 		B10023 /* toy_biplane_realistic.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = toy_biplane_realistic.usdz; sourceTree = "<group>"; };
 		B10024 /* toy_car.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = toy_car.usdz; sourceTree = "<group>"; };
@@ -69,6 +65,8 @@
 		B10027 /* GalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryView.swift; sourceTree = "<group>"; };
 		B10028 /* AnimateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimateSheet.swift; sourceTree = "<group>"; };
 		B10029 /* CapturedFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturedFrame.swift; sourceTree = "<group>"; };
+		B10030 /* BackgroundTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTheme.swift; sourceTree = "<group>"; };
+		B10031 /* BackgroundRemovalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundRemovalService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,6 +144,7 @@
 				B10013 /* PlacedCharacter.swift */,
 				B10014 /* TripoModels.swift */,
 				B10029 /* CapturedFrame.swift */,
+				B10030 /* BackgroundTheme.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -155,12 +154,10 @@
 			children = (
 				B10015 /* GeminiVoiceService.swift */,
 				B10016 /* AppleSpeechService.swift */,
-				B10017 /* FalModelService.swift */,
 				B10018 /* TripoModelService.swift */,
 				B10019 /* ModelConversionService.swift */,
-				B10020 /* ImageUploadService.swift */,
-				B10021 /* ImageEditService.swift */,
 				B10022 /* VideoGenerationService.swift */,
+				B10031 /* BackgroundRemovalService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -277,16 +274,15 @@
 				A10014 /* TripoModels.swift in Sources */,
 				A10015 /* GeminiVoiceService.swift in Sources */,
 				A10016 /* AppleSpeechService.swift in Sources */,
-				A10017 /* FalModelService.swift in Sources */,
 				A10018 /* TripoModelService.swift in Sources */,
 				A10019 /* ModelConversionService.swift in Sources */,
-				A10020 /* ImageUploadService.swift in Sources */,
-				A10021 /* ImageEditService.swift in Sources */,
 				A10022 /* VideoGenerationService.swift in Sources */,
 				A10026 /* ModelPickerSheet.swift in Sources */,
 				A10027 /* GalleryView.swift in Sources */,
 				A10028 /* AnimateSheet.swift in Sources */,
 				A10029 /* CapturedFrame.swift in Sources */,
+				A10030 /* BackgroundTheme.swift in Sources */,
+				A10031 /* BackgroundRemovalService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

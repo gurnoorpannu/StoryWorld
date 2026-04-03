@@ -2,10 +2,7 @@ import SwiftUI
 
 struct AnimateSheet: View {
     @ObservedObject var frame: CapturedFrame
-    let imageUploader: ImageUploadService
-    let imageEditService: ImageEditService
     let videoService: VideoGenerationService
-    let cinematicStyleEnabled: Bool
 
     @Environment(\.dismiss) private var dismiss
     @State private var animationPrompt = ""
@@ -99,35 +96,13 @@ struct AnimateSheet: View {
     private func generateAnimation() {
         isGenerating = true
         frame.isAnimating = true
-        statusMessage = "Uploading frame..."
+        statusMessage = "Sending to MiniMax..."
 
         Task { @MainActor in
             do {
-                // Step 1: Upload image if not already uploaded
-                let imageURL: URL
-                if let existing = frame.uploadedURL {
-                    imageURL = existing
-                } else {
-                    let uploaded = try await imageUploader.upload(frame.image, falKey: Secrets.falKey)
-                    frame.uploadedURL = uploaded
-                    imageURL = uploaded
-                }
-
-                // Step 2 (optional): Cinematic stylization
-                var finalImageURL = imageURL
-                if cinematicStyleEnabled {
-                    statusMessage = "Applying cinematic style..."
-                    do {
-                        let styledURL = try await imageEditService.stylizeFrame(imageURL: imageURL)
-                        finalImageURL = styledURL
-                    } catch {
-                        print("AnimateSheet: Stylization failed, using original")
-                    }
-                }
-
-                // Step 3: Generate video
+                // Generate video directly from image (base64) — no upload needed
                 let videoURL = try await videoService.generateVideo(
-                    fromImageURL: finalImageURL,
+                    fromImage: frame.image,
                     motionPrompt: animationPrompt
                 ) { progress in
                     Task { @MainActor in
