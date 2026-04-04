@@ -1,6 +1,6 @@
 # StoryWorld
 
-**An AR filmmaking tool powered by AI.** Speak to create 3D characters, place them in augmented reality, frame your shot by physically moving your phone, and let AI generate cinematic video clips from your scene.
+**An AR filmmaking tool powered by AI.** Speak to create 3D characters, place them in augmented reality, change backgrounds, frame your shot by physically moving your phone, and let AI generate cinematic video clips from your scene.
 
 ---
 
@@ -8,7 +8,7 @@
 
 ```
 Speak → AI transcribes & enhances prompt → 3D model generated → Placed in AR →
-Frame your shot → Capture → (Optional: cinematic stylization) → AI video generated → Play & save
+Choose background theme → Frame your shot → Capture → AI video generated → Play & save
 ```
 
 ---
@@ -16,9 +16,11 @@ Frame your shot → Capture → (Optional: cinematic stylization) → AI video g
 ## Features
 
 - **Voice-to-3D**: Describe a character or object in natural language. Gemini 2.5 Flash transcribes your speech and enhances it into an optimized 3D generation prompt.
-- **AI 3D Generation**: Hyper3D Rodin generates a textured 3D model (.glb) from your prompt, automatically converted to Apple's USDZ format for AR.
+- **AI 3D Generation**: OpenAI's Shap-E (hosted free on Hugging Face) generates a 3D model from your prompt, loaded directly into AR via a custom GLB parser.
 - **AR Placement**: Tap any real-world surface to place your character. Drag, pinch-to-scale, and two-finger-rotate to adjust.
-- **Cinematic Video**: Capture your AR scene, optionally apply Flux 2.0 Pro cinematic styling, then MiniMax Hailuo 2.3 generates a short cinematic video clip.
+- **Background Themes**: Choose from 8 AR backgrounds — Real World, Desert, Snow, Forest, Space, Ocean, Sunset, or Cyberpunk. Uses Apple Vision framework for foreground segmentation.
+- **Cinematic Video**: Capture your AR scene, then MiniMax Hailuo 2.3-Fast generates a short cinematic video clip.
+- **Gallery & Animate**: Browse captured frames in a gallery. Select any frame to animate it into a video.
 - **Offline Fallback**: If Gemini is unavailable, Apple's on-device SFSpeechRecognizer handles transcription. If 3D generation fails, bundled starter models keep the demo running.
 - **Save & Share**: Generated videos can be saved directly to your camera roll.
 
@@ -27,16 +29,16 @@ Frame your shot → Capture → (Optional: cinematic stylization) → AI video g
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|---|
-| Speech-to-Text + Prompt Enhancement | Gemini 2.5 Flash (Google AI Studio) | 
-| Offline Speech Fallback | Apple SFSpeechRecognizer | 
-| Text-to-3D | Hyper3D Rodin via fal.ai | 
-| GLB-to-USDZ Conversion | Apple ModelIO |
-| AR Rendering | ARKit + RealityKit | 
-| Image Stylization (optional) | Flux 2.0 Pro via fal.ai | 
-| Image-to-Video | MiniMax Hailuo 2.3 |
-| Audio Recording | AVFoundation | 
-| Video Playback & Save | AVKit + Photos | 
+|---|---|
+| Speech-to-Text + Prompt Enhancement | Gemini 2.5 Flash (Google AI Studio) |
+| Offline Speech Fallback | Apple SFSpeechRecognizer |
+| Text-to-3D | OpenAI Shap-E via Hugging Face Spaces (free) |
+| GLB Loading | Custom GLB binary parser → RealityKit ModelEntity |
+| AR Rendering | ARKit + RealityKit |
+| Background Removal | Apple Vision Framework (iOS 17+) |
+| Image-to-Video | MiniMax Hailuo 2.3-Fast (768P) |
+| Audio Recording | AVFoundation |
+| Video Playback & Save | AVKit + Photos |
 
 **Zero external dependencies.** No CocoaPods, no SPM packages. Everything uses URLSession and built-in Apple frameworks.
 
@@ -47,13 +49,11 @@ Frame your shot → Capture → (Optional: cinematic stylization) → AI video g
 | Service | Endpoint | Auth |
 |---|---|---|
 | Gemini 2.5 Flash | `generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent` | API key as URL param |
-| Rodin 3D Generation | `queue.fal.run/fal-ai/hyper3d/rodin` | `Authorization: Key` header |
-| Flux 2.0 Pro Stylization | `queue.fal.run/fal-ai/flux-2-pro/edit` | `Authorization: Key` header |
+| Shap-E 3D Generation | `hysts-shap-e.hf.space/gradio_api/call/text-to-3d` | None (free) |
 | MiniMax Hailuo 2.3 Video | `api.minimax.io/v1/video_generation` | `Authorization: Bearer` header |
-| fal.ai Image Upload | `fal.ai/api/upload` | `Authorization: Key` header |
 
-Fal.ai services use a queue-based pattern: **submit** (POST) -> **poll status** (GET) -> **fetch result** (GET).
-MiniMax uses a similar pattern: **submit** (POST `/v1/video_generation`) -> **poll** (GET `/v1/query/video_generation`) -> **retrieve file** (GET `/v1/files/retrieve`).
+Shap-E uses Gradio's REST API: **submit** (POST `/call/text-to-3d`) → **poll SSE** (GET `/call/text-to-3d/{event_id}`) → **download GLB** (GET `/file=...`).
+MiniMax uses a similar pattern: **submit** (POST `/v1/video_generation`) → **poll** (GET `/v1/query/video_generation`) → **retrieve file** (GET `/v1/files/retrieve`).
 
 ---
 
@@ -73,26 +73,30 @@ StoryWorld/
 │
 ├── Views/
 │   ├── MainARView.swift             # Primary UI with AR + controls overlay
+│   ├── AnimateSheet.swift           # Video generation from captured frame
+│   ├── GalleryView.swift            # Browse captured frames + animate
+│   ├── ModelPickerSheet.swift       # Starter model browser
 │   ├── VideoPlayerView.swift        # AVPlayer wrapper
 │   └── VideoResultSheet.swift       # Video playback sheet + save to Photos
 │
 ├── Models/
 │   ├── PlacedCharacter.swift        # Entity + anchor + model URL
+│   ├── CapturedFrame.swift          # Image + video URL + animation state
 │   ├── CharacterPrompt.swift        # raw_transcript, optimized_3d_prompt, motion_prompt
+│   ├── BackgroundTheme.swift        # 8 AR background themes with gradients
 │   ├── GeminiModels.swift           # Gemini API response types
-│   ├── FalModels.swift              # fal.ai response types (Rodin, Flux, Seedance, Upload)
-│   ├── TripoModels.swift            # Tripo AI response types (alternative)
+│   ├── FalModels.swift              # MiniMax API response types
 │   └── AppError.swift               # Error enum with localized descriptions
 │
 ├── Services/
 │   ├── GeminiVoiceService.swift     # Gemini transcription + prompt enhancement
 │   ├── AppleSpeechService.swift     # SFSpeechRecognizer offline fallback
-│   ├── FalModelService.swift        # Hyper3D Rodin 3D generation via fal.ai
-│   ├── TripoModelService.swift      # Tripo AI alternative (not wired)
-│   ├── ModelConversionService.swift # GLB -> USDZ via ModelIO
-│   ├── ImageUploadService.swift     # Upload UIImage to fal.ai storage
-│   ├── ImageEditService.swift       # Flux 2.0 Pro image stylization
-│   └── VideoGenerationService.swift # MiniMax Hailuo 2.3 image-to-video
+│   ├── HuggingFaceModelService.swift# Shap-E 3D generation (free, no key needed)
+│   ├── GLBLoader.swift              # Custom GLB binary parser → RealityKit entity
+│   ├── ModelConversionService.swift # GLB → USDZ via SceneKit (fallback path)
+│   ├── BackgroundRemovalService.swift# Apple Vision foreground segmentation
+│   ├── VideoGenerationService.swift # MiniMax Hailuo 2.3-Fast image-to-video
+│   └── (legacy: FalModelService, TripoModelService, ImageUploadService, ImageEditService)
 │
 ├── Resources/
 │   └── starter_models/
@@ -109,9 +113,9 @@ StoryWorld/
 ### Place a character with voice
 
 1. Tap the **mic button** (bottom left)
-2. Describe your character: *"a golden dragon with red wings"*
+2. Describe your character: *"a golden dragon"* or *"a spider monster"*
 3. Tap the mic again to stop recording
-4. Wait for the pipeline (30-90 seconds):
+4. Wait for the pipeline (~30 seconds):
    - "Understanding your voice..."
    - "Generating 3D..."
    - "Downloading..."
@@ -120,23 +124,28 @@ StoryWorld/
 5. Tap any flat surface (table, floor, wall) to place the model
 6. Drag, pinch, and rotate to adjust
 
+### Change background theme
+
+1. Tap the **background button** to open the theme picker
+2. Choose from: Real World, Desert, Snow, Forest, Space, Ocean, Sunset, Cyberpunk
+3. Captured frames will use the selected background (foreground segmentation via Apple Vision)
+
 ### Place a starter model (no API needed)
 
-1. Just tap any detected surface — a bundled 3D model appears immediately
+1. Tap the **model picker** button to browse bundled 3D models
 
-### Generate a cinematic video
+### Capture & animate
 
-1. Place at least one character in AR
-2. Walk around and frame your shot
-3. (Optional) Tap **"Cinematic Style"** to enable Flux 2.0 Pro stylization
-4. Tap the **camera button** (center)
-5. Wait 1-3 minutes for video generation
-6. A sheet slides up with your video
-7. Tap **Save** to save to your camera roll
+1. Place characters and frame your shot
+2. Tap the **camera button** to capture a frame
+3. Open the **gallery** to browse captures
+4. Tap any frame and choose **Animate** to generate a cinematic video
+5. Wait 1-3 minutes for MiniMax to generate the video
+6. Tap **Save** to save to your camera roll
 
 ### Clear the scene
 
-Tap the **trash button** (bottom right) to remove all placed characters.
+Tap the **trash button** to remove all placed characters.
 
 ---
 
@@ -160,10 +169,10 @@ Tap the **trash button** (bottom right) to remove all placed characters.
                            │              ┌─────────────────┐
                            │  (fallback)──► AppleSpeechService│
                            │              └─────────────────┘
-                           │ CharacterPrompt
+                           │ CharacterPrompt (simple prompt)
               ┌────────────▼────────────┐
-              │    FalModelService      │  Hyper3D Rodin
-              │    generateModel()      │  (30-90 sec)
+              │ HuggingFaceModelService │  Shap-E (free)
+              │    generateModel()      │  (~15-30 sec)
               └────────────┬────────────┘
                            │              ┌──────────────────┐
                            │  (fallback)──► Starter .usdz     │
@@ -174,13 +183,13 @@ Tap the **trash button** (bottom right) to remove all placed characters.
               └────────────┬────────────┘
                            │ local GLB file
               ┌────────────▼────────────┐
-              │ ModelConversionService  │  Apple ModelIO
-              │   convertGLBtoUSDZ()    │
+              │      GLBLoader          │  Custom binary parser
+              │   loadEntity(from:)     │  → RealityKit ModelEntity
               └────────────┬────────────┘
-                           │ USDZ file
+                           │ ModelEntity
               ┌────────────▼────────────┐
               │   ARSceneViewModel      │  RealityKit
-              │    placeModel()         │  + gesture support
+              │    placeEntity()        │  + gesture support
               └────────────┬────────────┘
                            │
                     ┌──────▼───────┐
@@ -192,17 +201,14 @@ Tap the **trash button** (bottom right) to remove all placed characters.
               └────────────┬────────────┘
                            │ UIImage
               ┌────────────▼────────────┐
-              │  ImageUploadService     │  fal.ai storage
+              │ BackgroundRemovalService │  Apple Vision
+              │  (if theme ≠ realWorld) │  foreground segmentation
               └────────────┬────────────┘
-                           │ hosted image URL
+                           │ composited UIImage
               ┌────────────▼────────────┐
-              │  ImageEditService       │  Flux 2.0 Pro
-              │  (optional, toggleable) │  (10-30 sec)
-              └────────────┬────────────┘
-                           │ styled image URL
-              ┌────────────▼────────────┐
-              │ VideoGenerationService  │  MiniMax Hailuo 2.3
-              │   generateVideo()       │  (1-3 min)
+              │ VideoGenerationService  │  MiniMax Hailuo 2.3-Fast
+              │   generateVideo()       │  base64 data URI (no upload)
+              │                         │  (1-3 min, $0.19/video)
               └────────────┬────────────┘
                            │ video URL
               ┌────────────▼────────────┐
@@ -217,9 +223,9 @@ The app is designed to never crash and always remain functional, even when APIs 
 | Stage | Primary | Fallback |
 |---|---|---|
 | Voice transcription | Gemini 2.5 Flash | Apple SFSpeechRecognizer (on-device) |
-| 3D generation | Hyper3D Rodin (fal.ai) | Bundled starter .usdz models |
-| GLB-to-USDZ conversion | Apple ModelIO | Bundled starter .usdz models |
-| Image stylization | Flux 2.0 Pro (fal.ai) | Skip — use original image (non-fatal) |
+| 3D generation | Shap-E via Hugging Face (free) | Bundled starter .usdz models |
+| GLB loading | Custom GLBLoader (direct parse) | SceneKit/ModelIO USDZ conversion |
+| Background removal | Apple Vision (iOS 17+) | Original image (no segmentation) |
 | All network calls | URLSession with error handling | Friendly error message, never crashes |
 
 ### Threading
@@ -241,7 +247,9 @@ The app is designed to never crash and always remain functional, even when APIs 
 | AVFoundation | Audio recording (AVAudioRecorder, AVAudioSession) |
 | AVKit | Video playback (VideoPlayer) |
 | Speech | On-device speech recognition (SFSpeechRecognizer) |
-| ModelIO | 3D model format conversion (GLB to USDZ) |
+| Vision | Foreground segmentation for background themes (iOS 17+) |
+| CoreImage | Image compositing (CIBlendWithMask) |
+| ModelIO | 3D model format conversion (GLB to USDZ, fallback) |
 | Photos | Save videos to camera roll (PHPhotoLibrary) |
 | Combine | Reactive state management (@Published) |
 
@@ -274,12 +282,23 @@ The app is designed to never crash and always remain functional, even when APIs 
 | Operation | Duration |
 |---|---|
 | Voice transcription (Gemini) | 2-5 seconds |
-| 3D model generation (Rodin) | 30-90 seconds |
+| 3D model generation (Shap-E) | 15-30 seconds |
 | GLB download | 2-5 seconds |
-| GLB-to-USDZ conversion | < 1 second |
-| Image upload | 1-2 seconds |
-| Image stylization (Flux) | 10-30 seconds |
+| GLB parsing (GLBLoader) | < 1 second |
+| Background segmentation | 1-2 seconds |
 | Video generation (MiniMax Hailuo) | 1-3 minutes |
+
+---
+
+## Cost Summary
+
+| Service | Cost |
+|---|---|
+| Gemini 2.5 Flash | Free tier via Google AI Studio |
+| Shap-E (Hugging Face) | **Free** (no API key, no credits) |
+| MiniMax Hailuo 2.3-Fast | ~$0.19/video (768P, 6s) |
+| Apple frameworks | Free |
+| **Total for demo** | **~$0.19 per video generated** |
 
 ---
 
@@ -289,24 +308,13 @@ The app is designed to never crash and always remain functional, even when APIs 
 |---|---|
 | AR not detecting surfaces | Point at a well-lit, textured surface. Move slowly. |
 | "Gemini API error (400)" | Check your API key in Secrets.swift |
-| "fal.ai submit failed" | Check your fal.ai key and remaining credits |
-| 3D model looks wrong in AR | GLB-to-USDZ conversion is imperfect. Try a different prompt. |
+| 3D model looks blobby | Shap-E is a free model — quality is basic but good for demos. Try simpler prompts. |
+| Model appears very dark | The GLBLoader auto-boosts dark vertex colors. Try a different prompt. |
 | Video generation seems stuck | MiniMax Hailuo takes 1-3 min. Watch the elapsed time counter. |
 | App crashes on simulator | AR only works on physical devices. Use a real iPhone. |
 | Model won't place | Wait for AR to detect a plane (status shows "Scanning...") |
 | No sound when recording | Allow microphone permission in Settings > StoryWorld |
-
----
-
-## Cost Summary
-
-| Service | Free Tier |
-|---|---|
-| Gemini 2.5 Flash | Generous free tier via Google AI Studio |
-| fal.ai (Rodin, Flux) | Free signup credits (~$10 worth) |
-| MiniMax Hailuo 2.3 | Free tier available |
-| Apple frameworks | Free |
-| **Total** | **$0** |
+| Background theme not working | Requires iOS 17+ for Vision framework segmentation. |
 
 ---
 
