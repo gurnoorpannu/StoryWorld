@@ -22,7 +22,7 @@ struct MainARView: View {
     // Services
     private let gemini = GeminiVoiceService(apiKey: Secrets.geminiKey)
     private let appleSpeech = AppleSpeechService()
-    private let modelService = TripoModelService(apiKey: Secrets.tripoKey)
+    private let modelService = HuggingFaceModelService()
     private let conversion = ModelConversionService()
     private let videoService = VideoGenerationService(apiKey: Secrets.minimaxKey)
     private let bgRemoval = BackgroundRemovalService()
@@ -338,7 +338,7 @@ struct MainARView: View {
                        !transcript.isEmpty {
                         prompt = CharacterPrompt(
                             raw_transcript: transcript,
-                            optimized_3d_prompt: "A detailed 3D model of \(transcript), high quality, photorealistic",
+                            optimized_3d_prompt: transcript,
                             motion_prompt: "Gentle camera movement, cinematic atmosphere, the subject subtly animates"
                         )
                     } else {
@@ -371,21 +371,34 @@ struct MainARView: View {
                 let localGLB = try await modelService.downloadModel(from: remoteGLBURL)
 
                 statusMessage = "Preparing for AR..."
-                let usdzURL: URL
+
+                // Try USDZ conversion first, then custom GLB loader as fallback
+                var placed = false
                 do {
-                    usdzURL = try conversion.convertGLBtoUSDZ(glbLocalURL: localGLB)
+                    let usdzURL = try conversion.convertGLBtoUSDZ(glbLocalURL: localGLB)
+                    arVM.pendingModelURL = usdzURL
+                    placed = true
                 } catch {
-                    print("MainARView: GLB→USDZ conversion failed, using starter model: \(error)")
-                    if let fallback = starterModelURL() {
-                        arVM.pendingModelURL = fallback
-                        statusMessage = "Using starter model — AI model had complex geometry. Tap to place!"
-                        isProcessing = false
-                        return
-                    }
-                    throw AppError.conversionFailed
+                    print("MainARView: USDZ conversion failed, trying direct GLB loader...")
                 }
 
-                arVM.pendingModelURL = usdzURL
+                if !placed {
+                    do {
+                        let entity = try GLBLoader.loadEntity(from: localGLB)
+                        arVM.pendingEntity = entity
+                        placed = true
+                        print("MainARView: Loaded GLB directly via custom parser")
+                    } catch {
+                        print("MainARView: GLB loader also failed: \(error)")
+                        if let fallback = starterModelURL() {
+                            arVM.pendingModelURL = fallback
+                            statusMessage = "Using starter model — AI model had complex geometry. Tap to place!"
+                            isProcessing = false
+                            return
+                        }
+                        throw AppError.conversionFailed
+                    }
+                }
                 statusMessage = "Tap a surface to place your character!"
                 isProcessing = false
 

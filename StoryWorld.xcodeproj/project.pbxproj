@@ -35,6 +35,8 @@
 		A10029 /* CapturedFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10029 /* CapturedFrame.swift */; };
 		A10030 /* BackgroundTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10030 /* BackgroundTheme.swift */; };
 		A10031 /* BackgroundRemovalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10031 /* BackgroundRemovalService.swift */; };
+		A10032 /* HuggingFaceModelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10032 /* HuggingFaceModelService.swift */; };
+		A10033 /* GLBLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10033 /* GLBLoader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -67,6 +69,8 @@
 		B10029 /* CapturedFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturedFrame.swift; sourceTree = "<group>"; };
 		B10030 /* BackgroundTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTheme.swift; sourceTree = "<group>"; };
 		B10031 /* BackgroundRemovalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundRemovalService.swift; sourceTree = "<group>"; };
+		B10032 /* HuggingFaceModelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuggingFaceModelService.swift; sourceTree = "<group>"; };
+		B10033 /* GLBLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GLBLoader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -158,6 +162,8 @@
 				B10019 /* ModelConversionService.swift */,
 				B10022 /* VideoGenerationService.swift */,
 				B10031 /* BackgroundRemovalService.swift */,
+				B10032 /* HuggingFaceModelService.swift */,
+				B10033 /* GLBLoader.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -283,6 +289,8 @@
 				A10029 /* CapturedFrame.swift in Sources */,
 				A10030 /* BackgroundTheme.swift in Sources */,
 				A10031 /* BackgroundRemovalService.swift in Sources */,
+				A10032 /* HuggingFaceModelService.swift in Sources */,
+				A10033 /* GLBLoader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

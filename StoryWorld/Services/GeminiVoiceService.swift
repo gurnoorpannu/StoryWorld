@@ -28,7 +28,14 @@ class GeminiVoiceService {
         let systemPrompt = """
         Listen to this audio. The user is describing a 3D character or object.
         Return ONLY a JSON object:
-        {"raw_transcript": "what they said", "optimized_3d_prompt": "detailed prompt for text-to-3D AI", "motion_prompt": "cinematic motion description for video generation"}
+        {"raw_transcript": "what they said", "optimized_3d_prompt": "short simple 3D prompt", "motion_prompt": "cinematic motion description for video generation"}
+
+        IMPORTANT for optimized_3d_prompt:
+        - Keep it SHORT (under 10 words). Example: "a spider monster" or "a red dragon" or "a wooden chair"
+        - Do NOT add style words like "photorealistic", "detailed", "cinematic lighting", "high resolution"
+        - Just describe the object simply and concisely
+        - The 3D model generator works best with plain, simple descriptions
+
         Return raw JSON only, no markdown backticks.
         """
 

@@ -10,6 +10,7 @@ class ARSceneViewModel: ObservableObject {
     @Published var trackingStatus: String = "Initializing AR..."
 
     var pendingModelURL: URL?
+    var pendingEntity: ModelEntity?
     weak var arView: ARView?
 
     // MARK: - Placement
@@ -17,7 +18,11 @@ class ARSceneViewModel: ObservableObject {
     func handlePlacement(at worldTransform: simd_float4x4) {
         guard let arView = arView else { return }
 
-        if let modelURL = pendingModelURL {
+        if let entity = pendingEntity {
+            pendingEntity = nil
+            pendingModelURL = nil
+            placeEntity(entity, at: worldTransform, in: arView)
+        } else if let modelURL = pendingModelURL {
             pendingModelURL = nil
             Task {
                 await placeModel(from: modelURL, at: worldTransform, in: arView)
@@ -28,9 +33,24 @@ class ARSceneViewModel: ObservableObject {
         }
     }
 
+    func placeEntity(_ entity: ModelEntity, at transform: simd_float4x4, in arView: ARView) {
+        entity.scale = SIMD3<Float>(repeating: 0.3)
+        entity.generateCollisionShapes(recursive: true)
+
+        let anchor = AnchorEntity(world: transform)
+        anchor.addChild(entity)
+        arView.scene.addAnchor(anchor)
+
+        installGestures(on: entity, in: arView)
+
+        let character = PlacedCharacter(entity: entity, anchor: anchor, modelURL: nil)
+        placedCharacters.append(character)
+    }
+
     func placeModel(from usdzURL: URL, at transform: simd_float4x4, in arView: ARView) async {
         do {
-            let entity = try Entity.loadModel(contentsOf: usdzURL)
+            // Use Entity.load (not .loadModel) — handles both ModelEntity and complex scene hierarchies
+            let entity = try await Entity.load(contentsOf: usdzURL)
             entity.scale = SIMD3<Float>(repeating: 0.3)
             entity.generateCollisionShapes(recursive: true)
 
