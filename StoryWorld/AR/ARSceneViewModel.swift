@@ -99,13 +99,38 @@ class ARSceneViewModel: ObservableObject {
 
     // MARK: - Capture
 
-    func captureFrame() async -> UIImage? {
-        guard let arView = arView else { return nil }
-        return await withCheckedContinuation { continuation in
+    private func snapshotImage(from arView: ARView) async -> UIImage? {
+        await withCheckedContinuation { continuation in
             arView.snapshot(saveToHDR: false) { image in
                 continuation.resume(returning: image)
             }
         }
+    }
+
+    func captureFrame() async -> UIImage? {
+        guard let arView = arView else { return nil }
+        return await snapshotImage(from: arView)
+    }
+
+    /// Capture two frames for virtual-object isolation:
+    /// 1) with virtual content enabled
+    /// 2) with virtual content hidden (camera-only)
+    func captureFramePairForVirtualIsolation() async -> (withObjects: UIImage, withoutObjects: UIImage)? {
+        guard let arView = arView else { return nil }
+        guard let withObjects = await snapshotImage(from: arView) else { return nil }
+
+        let entityStates: [(Entity, Bool)] = placedCharacters.map { ($0.entity, $0.entity.isEnabled) }
+        for (entity, _) in entityStates {
+            entity.isEnabled = false
+        }
+        defer {
+            for (entity, wasEnabled) in entityStates {
+                entity.isEnabled = wasEnabled
+            }
+        }
+
+        guard let withoutObjects = await snapshotImage(from: arView) else { return nil }
+        return (withObjects, withoutObjects)
     }
 
     // MARK: - Management

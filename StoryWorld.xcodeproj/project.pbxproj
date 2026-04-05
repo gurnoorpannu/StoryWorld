@@ -37,6 +37,7 @@
 		A10031 /* BackgroundRemovalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10031 /* BackgroundRemovalService.swift */; };
 		A10032 /* HuggingFaceModelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10032 /* HuggingFaceModelService.swift */; };
 		A10033 /* GLBLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10033 /* GLBLoader.swift */; };
+		A10034 /* UnsplashService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10034 /* UnsplashService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -71,6 +72,7 @@
 		B10031 /* BackgroundRemovalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundRemovalService.swift; sourceTree = "<group>"; };
 		B10032 /* HuggingFaceModelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuggingFaceModelService.swift; sourceTree = "<group>"; };
 		B10033 /* GLBLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GLBLoader.swift; sourceTree = "<group>"; };
+		B10034 /* UnsplashService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnsplashService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -164,6 +166,7 @@
 				B10031 /* BackgroundRemovalService.swift */,
 				B10032 /* HuggingFaceModelService.swift */,
 				B10033 /* GLBLoader.swift */,
+				B10034 /* UnsplashService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -291,6 +294,7 @@
 				A10031 /* BackgroundRemovalService.swift in Sources */,
 				A10032 /* HuggingFaceModelService.swift in Sources */,
 				A10033 /* GLBLoader.swift in Sources */,
+				A10034 /* UnsplashService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct MainARView: View {
     @StateObject private var arVM = ARSceneViewModel()
@@ -18,6 +19,10 @@ struct MainARView: View {
     @State private var capturedFrames: [CapturedFrame] = []
     @State private var selectedBackground: BackgroundTheme = .realWorld
     @State private var showBackgroundPicker = false
+    @State private var customBackgroundImage: UIImage? = nil
+    @State private var bgPhotoPickerItem: PhotosPickerItem? = nil
+    @State private var livePreviewImage: UIImage? = nil
+    @State private var livePreviewTask: Task<Void, Never>? = nil
 
     // Services
     private let gemini = GeminiVoiceService(apiKey: Secrets.geminiKey)
@@ -32,6 +37,15 @@ struct MainARView: View {
             // Full-screen AR view
             ARViewContainer(viewModel: arVM)
                 .ignoresSafeArea()
+
+            // Live composited preview for non-real backgrounds
+            if let preview = livePreviewImage, selectedBackground != .realWorld {
+                Image(uiImage: preview)
+                    .resizable()
+                    .scaledToFill()
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            }
 
             // Overlay controls
             VStack {
@@ -142,45 +156,28 @@ struct MainARView: View {
 
                 // Background picker strip
                 if showBackgroundPicker {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(BackgroundTheme.allCases) { theme in
-                                Button {
-                                    selectedBackground = theme
-                                    showBackgroundPicker = false
-                                } label: {
-                                    VStack(spacing: 4) {
-                                        ZStack {
-                                            if theme == .realWorld {
-                                                Circle()
-                                                    .fill(.ultraThinMaterial)
-                                                    .frame(width: 44, height: 44)
-                                            } else {
-                                                Circle()
-                                                    .fill(LinearGradient(
-                                                        colors: [theme.colors.0, theme.colors.1],
-                                                        startPoint: .top, endPoint: .bottom
-                                                    ))
-                                                    .frame(width: 44, height: 44)
-                                            }
-                                            Image(systemName: theme.icon)
-                                                .font(.system(size: 16))
-                                                .foregroundStyle(.white)
+                    VStack(spacing: 8) {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(BackgroundTheme.allCases) { theme in
+                                    if theme == .gallery {
+                                        // Photo picker button
+                                        PhotosPicker(selection: $bgPhotoPickerItem, matching: .images) {
+                                            bgThemeLabel(theme: theme)
                                         }
-                                        Text(theme.rawValue)
-                                            .font(.system(size: 9))
-                                            .foregroundStyle(.white)
+                                    } else {
+                                        Button {
+                                            selectedBackground = theme
+                                            customBackgroundImage = nil
+                                            showBackgroundPicker = false
+                                        } label: {
+                                            bgThemeLabel(theme: theme)
+                                        }
                                     }
-                                    .padding(4)
-                                    .background(
-                                        selectedBackground == theme
-                                            ? RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.2))
-                                            : nil
-                                    )
                                 }
                             }
+                            .padding(.horizontal, 16)
                         }
-                        .padding(.horizontal, 16)
                     }
                     .padding(.bottom, 8)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -261,6 +258,27 @@ struct MainARView: View {
                 VideoResultSheet(videoURL: url)
             }
         }
+        .onChange(of: bgPhotoPickerItem) { newItem in
+            guard let newItem = newItem else { return }
+            Task {
+                if let data = try? await newItem.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    customBackgroundImage = image
+                    selectedBackground = .gallery
+                    showBackgroundPicker = false
+                    statusMessage = "Photo background set!"
+                    print("MainARView: Photo library background loaded")
+                    restartLiveBackgroundPreview()
+                }
+                bgPhotoPickerItem = nil
+            }
+        }
+        .onChange(of: selectedBackground) { _ in
+            restartLiveBackgroundPreview()
+        }
+        .onDisappear {
+            stopLiveBackgroundPreview()
+        }
     }
 
     // MARK: - Recording
@@ -286,37 +304,61 @@ struct MainARView: View {
 
     private func captureToGallery() {
         statusMessage = "Capturing..."
+        let shouldResumeLivePreview = selectedBackground != .realWorld
+        stopLiveBackgroundPreview()
 
         Task { @MainActor in
-            guard let rawImage = await arVM.captureFrame() else {
-                statusMessage = "Capture failed — try again"
-                return
-            }
-
             let finalImage: UIImage
-            if selectedBackground != .realWorld {
-                statusMessage = "Applying \(selectedBackground.rawValue) background..."
-                if let composited = bgRemoval.applyBackground(to: rawImage, theme: selectedBackground) {
-                    finalImage = composited
-                } else {
-                    // Fallback: use raw image if background removal fails
-                    finalImage = rawImage
-                    print("MainARView: Background removal failed, using original")
+            if selectedBackground == .realWorld {
+                guard let rawImage = await arVM.captureFrame() else {
+                    statusMessage = "Capture failed — try again"
+                    if shouldResumeLivePreview {
+                        restartLiveBackgroundPreview()
+                    }
+                    return
                 }
-            } else {
                 finalImage = rawImage
-            }
+            } else {
+                statusMessage = "Applying \(selectedBackground.rawValue) background..."
 
-            let frame = CapturedFrame(image: finalImage)
-            capturedFrames.append(frame)
-            statusMessage = "Captured! Open Gallery to animate."
+                guard let bgPhoto = currentBackgroundPhoto() else {
+                    guard let rawImage = await arVM.captureFrame() else {
+                        statusMessage = "Capture failed — try again"
+                        if shouldResumeLivePreview {
+                            restartLiveBackgroundPreview()
+                        }
+                        return
+                    }
+                    finalImage = rawImage
+                    print("MainARView: No background photo available, using original")
+                    continueAfterCapture(finalImage: finalImage, shouldResumeLivePreview: shouldResumeLivePreview)
+                    return
+                }
 
-            // Flash effect
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                if statusMessage == "Captured! Open Gallery to animate." {
-                    statusMessage = ""
+                if let pair = await arVM.captureFramePairForVirtualIsolation(),
+                   let focused = bgRemoval.applyPhotoBackgroundFocusingVirtualObjects(
+                    withObjects: pair.withObjects,
+                    withoutObjects: pair.withoutObjects,
+                    backgroundPhoto: bgPhoto
+                   ) {
+                    finalImage = focused
+                    print("MainARView: Applied object-focused background compositing")
+                } else if let withObjects = await arVM.captureFrame(),
+                          let fallback = bgRemoval.applyPhotoBackground(to: withObjects, backgroundPhoto: bgPhoto) {
+                    finalImage = fallback
+                    print("MainARView: Object-focused path failed, used Vision fallback")
+                } else if let rawImage = await arVM.captureFrame() {
+                    finalImage = rawImage
+                    print("MainARView: Background compositing failed, using original")
+                } else {
+                    statusMessage = "Capture failed — try again"
+                    if shouldResumeLivePreview {
+                        restartLiveBackgroundPreview()
+                    }
+                    return
                 }
             }
+            continueAfterCapture(finalImage: finalImage, shouldResumeLivePreview: shouldResumeLivePreview)
         }
     }
 
@@ -417,6 +459,66 @@ struct MainARView: View {
             ?? Bundle.main.url(forResource: "toy_car", withExtension: "usdz")
     }
 
+    private func currentBackgroundPhoto() -> UIImage? {
+        if selectedBackground == .gallery {
+            return customBackgroundImage
+        }
+        return selectedBackground.loadBundledImage()
+    }
+
+    private func restartLiveBackgroundPreview() {
+        stopLiveBackgroundPreview()
+
+        guard selectedBackground != .realWorld else { return }
+        guard let background = currentBackgroundPhoto() else { return }
+
+        livePreviewTask = Task {
+            let preview: UIImage
+            if let pair = await arVM.captureFramePairForVirtualIsolation(),
+               let focused = bgRemoval.applyPhotoBackgroundFocusingVirtualObjects(
+                withObjects: pair.withObjects,
+                withoutObjects: pair.withoutObjects,
+                backgroundPhoto: background
+               ) {
+                preview = focused
+            } else if let withObjects = await arVM.captureFrame(),
+                      let fallback = bgRemoval.applyPhotoBackground(to: withObjects, backgroundPhoto: background) {
+                preview = fallback
+            } else if let rawImage = await arVM.captureFrame() {
+                preview = rawImage
+            } else {
+                return
+            }
+            if Task.isCancelled { return }
+
+            await MainActor.run {
+                livePreviewImage = preview
+            }
+        }
+    }
+
+    private func stopLiveBackgroundPreview() {
+        livePreviewTask?.cancel()
+        livePreviewTask = nil
+        livePreviewImage = nil
+    }
+
+    private func continueAfterCapture(finalImage: UIImage, shouldResumeLivePreview: Bool) {
+        let frame = CapturedFrame(image: finalImage)
+        capturedFrames.append(frame)
+        statusMessage = "Captured! Open Gallery to animate."
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            if statusMessage == "Captured! Open Gallery to animate." {
+                statusMessage = ""
+            }
+        }
+
+        if shouldResumeLivePreview {
+            restartLiveBackgroundPreview()
+        }
+    }
+
     private func friendlyError(_ error: Error) -> String {
         if let appError = error as? AppError {
             return appError.errorDescription ?? "Something went wrong"
@@ -440,6 +542,50 @@ struct MainARView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(.ultraThinMaterial, in: Capsule())
+    }
+
+    @ViewBuilder
+    private func bgThemeLabel(theme: BackgroundTheme) -> some View {
+        VStack(spacing: 4) {
+            ZStack {
+                if theme == .realWorld {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 50, height: 50)
+                } else if let assetName = theme.assetName,
+                          let img = UIImage(named: assetName) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 50, height: 50)
+                        .clipShape(Circle())
+                } else if theme == .gallery, let custom = customBackgroundImage {
+                    // Show the user's picked photo as the circle
+                    Image(uiImage: custom)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 50, height: 50)
+                        .clipShape(Circle())
+                } else {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 50, height: 50)
+                }
+                Image(systemName: theme.icon)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.6), radius: 2)
+            }
+            Text(theme.rawValue)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(.white)
+        }
+        .padding(4)
+        .background(
+            selectedBackground == theme
+                ? RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.2))
+                : nil
+        )
     }
 
     private func controlButton(

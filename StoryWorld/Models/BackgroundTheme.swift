@@ -1,14 +1,12 @@
 import SwiftUI
+import UIKit
 
 enum BackgroundTheme: String, CaseIterable, Identifiable {
     case realWorld = "Real World"
     case desert = "Desert"
+    case hills = "Hills"
     case snow = "Snow"
-    case forest = "Forest"
-    case space = "Space"
-    case ocean = "Ocean"
-    case sunset = "Sunset"
-    case cyberpunk = "Cyberpunk"
+    case gallery = "My Photos"
 
     var id: String { rawValue }
 
@@ -16,36 +14,30 @@ enum BackgroundTheme: String, CaseIterable, Identifiable {
         switch self {
         case .realWorld: return "camera.fill"
         case .desert: return "sun.max.fill"
+        case .hills: return "mountain.2.fill"
         case .snow: return "snowflake"
-        case .forest: return "leaf.fill"
-        case .space: return "sparkles"
-        case .ocean: return "water.waves"
-        case .sunset: return "sunset.fill"
-        case .cyberpunk: return "bolt.fill"
+        case .gallery: return "photo.on.rectangle"
         }
     }
 
-    var colors: (Color, Color) {
+    /// Asset catalog image name for bundled backgrounds
+    var assetName: String? {
         switch self {
-        case .realWorld: return (.clear, .clear)
-        case .desert: return (Color(red: 0.96, green: 0.76, blue: 0.42), Color(red: 0.78, green: 0.48, blue: 0.18))
-        case .snow: return (Color(red: 0.85, green: 0.92, blue: 0.98), Color(red: 0.70, green: 0.80, blue: 0.90))
-        case .forest: return (Color(red: 0.18, green: 0.42, blue: 0.22), Color(red: 0.08, green: 0.22, blue: 0.12))
-        case .space: return (Color(red: 0.05, green: 0.02, blue: 0.15), Color(red: 0.0, green: 0.0, blue: 0.0))
-        case .ocean: return (Color(red: 0.10, green: 0.50, blue: 0.80), Color(red: 0.04, green: 0.20, blue: 0.50))
-        case .sunset: return (Color(red: 1.0, green: 0.55, blue: 0.20), Color(red: 0.80, green: 0.20, blue: 0.40))
-        case .cyberpunk: return (Color(red: 0.10, green: 0.0, blue: 0.25), Color(red: 0.60, green: 0.0, blue: 0.80))
+        case .desert: return "bg_desert"
+        case .hills: return "bg_hills"
+        case .snow: return "bg_snow"
+        default: return nil
         }
     }
 
-    /// Generate a gradient UIImage for compositing
-    func renderBackground(size: CGSize) -> UIImage {
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let (top, bottom) = colors
-        return renderer.image { context in
-            let cgColors = [UIColor(top).cgColor, UIColor(bottom).cgColor]
-            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: cgColors as CFArray, locations: [0, 1])!
-            context.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: size.height), options: [])
-        }
+    /// Whether this is a bundled background with a photo
+    var isBundled: Bool {
+        assetName != nil
+    }
+
+    /// Load the bundled background UIImage from Assets.xcassets
+    func loadBundledImage() -> UIImage? {
+        guard let name = assetName else { return nil }
+        return UIImage(named: name)
     }
 }
